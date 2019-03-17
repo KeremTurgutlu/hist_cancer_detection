@@ -10,7 +10,7 @@ sys.path.append("dev/"); from metric_utils import AUC, CSVLogger
 
 # get model name from command line
 model_name = sys.argv[1]
-epochs = {'stage1':100, 'stage2':100, 'stage3':100}
+epochs = {'stage1':30, 'stage2':30, 'stage3':30}
 print(f"tranining for epochs {epochs}")
 
 # load kfold data
@@ -47,6 +47,8 @@ for i in range(len(cv_data)):
     
     learn = cnn_learner(data=fold_data, base_arch=arch, metrics=[accuracy, auc], callbacks=learn_callbacks,
                    callback_fns=learn_callback_fns)
+    
+    print(f"Number of layer groups for {model_name}: {len(learn.layer_groups)}")
     
     # Stage-1 training
     learn.lr_find()
