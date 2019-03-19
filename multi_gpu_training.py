@@ -12,7 +12,7 @@ def main(gpu:Param("GPU to run on", str)=None, arch_name:Param("Architecture nam
          model_suffix:Param("Model name suffix", str)="_non_overlap"):
     """Distrubuted training of a given experiment.
     Fastest speed is if you run as follows:
-        python fastai/fastai/launch.py --gpus=3456 kfold_non_overlap.py --arch_name=densenet201 --model_suffix=_non_overlap
+        python ../fastai/fastai/launch.py --gpus=3456 ./multi_gpu_training.py --arch_name=resnet18 --model_suffix=_non_overlap
     """
     
     # Init
@@ -43,8 +43,8 @@ def main(gpu:Param("GPU to run on", str)=None, arch_name:Param("Architecture nam
         auc = AUC()
         learn_callbacks = [TerminateOnNaNCallback()]
         learn_callback_fns = [partial(EarlyStoppingCallback, monitor='auc', mode='max', patience=3),
-                              partial(SaveModelCallback, monitor='auc', mode='max', every='improvement',
-                                      name=f'best_of_{MODEL_NAME}/fold{fold_num}'),
+#                               partial(SaveModelCallback, monitor='auc', mode='max', every='improvement',
+#                                       name=f'best_of_{MODEL_NAME}/fold{fold_num}'),
                               partial(ReduceLROnPlateauCallback, monitor='auc', mode='max', patience=0, factor=0.9),
                               partial(CSVLogger, filename=f'logs/{MODEL_NAME}', append=True)]
 
@@ -72,11 +72,14 @@ def main(gpu:Param("GPU to run on", str)=None, arch_name:Param("Architecture nam
         max_lr=lr/100
         print(f"Stage-3 training with lr={max_lr}")
         learn.fit_one_cycle(epochs['stage3'], max_lr=[max_lr/10, max_lr/3, max_lr])
-
+        
+        # Save Manually - SaveModelCallback gives error
+        learn.save(f'best_of_{MODEL_NAME}/fold{fold_num}')
+        
         print(f"Training of fold{fold_num} model is done...destroying learner")
         learn.destroy()
 
-
+        
     # Create preds and submissions directory for the model
     os.makedirs(path/f'preds/best_of_{MODEL_NAME}', exist_ok=True)
     os.makedirs(path/f"submissions/best_of_{MODEL_NAME}", exist_ok=True)

@@ -1,10 +1,7 @@
-# End-to-end train-predict-submit
-
-import warnings
+import warnings; warnings.filterwarnings('ignore')
 from fastai.vision import *
 from fastai.callbacks import *
 from fastai.vision.models import cadene_models 
-warnings.filterwarnings('ignore')
 path = Path('../data/histopathologic/')
 sys.path.append("dev/"); from metric_utils import AUC, CSVLogger
 
