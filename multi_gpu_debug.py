@@ -32,11 +32,6 @@ class OnlySaveModelCallback(TrackerCallback):
                 self.best = current
                 self.learn.save(f'{self.name}')
 
-#     def on_train_end(self, **kwargs):
-#         "Load the best model."
-#         if self.every=="improvement" and (self.learn.path/f'{self.learn.model_dir}/{self.name}.pth').is_file():
-#             self.learn.load(f'{self.name}', purge=False)
-            
 @call_parse
 def main(gpu:Param("GPU to run on", str)=None, 
          arch_name:Param("Architecture name", str)="densenet201",
@@ -56,8 +51,9 @@ def main(gpu:Param("GPU to run on", str)=None,
     print(f"tranining for epochs {epochs}")
 
     # Load kfold data
-    cv_data = pd.read_pickle(path/'models/cv_non_overlap_data.pkl')
-
+#     cv_data = pd.read_pickle(path/'models/cv_non_overlap_data.pkl')
+    cv_data = pd.read_pickle(path/'models/cv_data_sz_224.pkl')
+    
     # Get model function
     try:arch = getattr(models, arch_name); print(f"got fastai model {arch_name}")
     except:arch = getattr(cadene_models, arch_name); print(f"got cadene model {arch_name}")
@@ -70,33 +66,25 @@ def main(gpu:Param("GPU to run on", str)=None,
     # Init distributed
     gpu = setup_distrib(gpu)
     n_gpus = num_distrib()
-    
         
     # Train with kfold data
     print(f"Initialize Learner at fold{fold_num}")
     fold_data = cv_data[fold_num]
     auc = AUC()
-    learn_callbacks = [TerminateOnNaNCallback()]
-#     learn_callback_fns = [
-#         partial(EarlyStoppingCallback, monitor='auc', mode='max', patience=3),
-#                           partial(SaveModelCallback, monitor='auc', mode='max', every='improvement',
-#                                       name=f'best_of_{MODEL_NAME}/fold{fold_num}'),
-#                           partial(ReduceLROnPlateauCallback, monitor='auc', mode='max', patience=0, factor=0.9),
-#                           partial(CSVLogger, filename=f'logs/{MODEL_NAME}', append=True)]
-  
+    learn_callbacks = [TerminateOnNaNCallback()]  
     learn_callback_fns = [partial(ReduceLROnPlateauCallback, monitor='auc', mode='max', patience=0, factor=0.9),
                          partial(OnlySaveModelCallback, monitor='auc', mode='max', every='improvement',
-                                      name=f'best_of_{MODEL_NAME}/fold{fold_num}')]
+                                      name=f'best_of_{MODEL_NAME}/fold{fold_num}'),
+                         
+                         partial(CSVLogger, filename=f'logs/{MODEL_NAME}', append=True)]
     
     learn = cnn_learner(data=fold_data, base_arch=arch, metrics=[accuracy, auc], 
-                    lin_ftrs=[1024,1024], ps=[0.7, 0.7, 0.7],
+                    lin_ftrs=[1024,1024], ps=[0.8, 0.8, 0.8],
                     callbacks=learn_callbacks,
                     callback_fns=learn_callback_fns)
     # distributed
     learn.to_fp16()
     learn.to_distributed(gpu)
-#     print("gpu", gpu)
-#     print("rank", torch.distributed.get_rank())
     
     # Stage-1 training
     lr = 3e-3

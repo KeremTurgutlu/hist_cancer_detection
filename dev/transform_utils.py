@@ -1,5 +1,6 @@
 from fastai.vision import *
 from fastai.vision.transform import _crop_default
+import torchvision.transforms as torch_tfms
 
 def _rand_center_crop(x, a=40, b=96):
     "x: tensor, center crop an image creating a patch randomly between crop size (a,b)"
@@ -27,3 +28,29 @@ def _add_center_attn_mask(x):
 center_crop = TfmPixel(_rand_center_crop); center_crop.order = 0
 center_crop_and_resize = TfmPixel(_rand_center_crop_and_resize); center_crop_and_resize.order = 0
 center_attn_mask = TfmPixel(_add_center_attn_mask); center_attn_mask.order = 9999
+
+
+def image2pil(img):
+    "fastai Image to PIL image"
+    return PIL.Image.fromarray((image2np(img.data)*255).astype(np.uint8))
+
+def pil2image(pil_img):
+    "PIL Image to fastai Image"
+    return Image(pil2tensor(pil_img, np.float32).div_(255))
+
+def _torchvision_composed(x, composed_tfms):
+    "x: tensor, composed_tfms: a torchvision.transforms.Composed object"
+    return pil2image(composed_tfms(image2pil(Image(x)))).data
+
+torchvision_composed = TfmPixel(_torchvision_composed)
+
+
+
+
+
+
+
+
+
+
+
